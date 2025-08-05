@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DT Analyzer Pro v5</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    button {
+      font-size: 18px;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #log {
+      background: #222;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+    .highlight {
+      color: #0f0;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐉🐯 DT Analyzer Pro v5</h1>
+  <p>Tap your result:</p>
+  <button onclick="addResult('D')">Dragon (D)</button>
+  <button onclick="addResult('T')">Tiger (T)</button>
+  <button onclick="addResult('Tie')">Tie</button>
+  <button onclick="exportCSV()">📁 Export CSV</button>
+
+  <div id="log">
+    <h2>🔮 Prediction:</h2>
+    <p id="prediction">--</p>
+    <h3>📈 Confidence: <span id="confidence">--</span></h3>
+    <h3>💡 Advice: <span id="advice">--</span></h3>
+    <h3>✅ Win/Loss: <span id="winloss">--</span></h3>
+    <h3>🎯 Accuracy: <span id="accuracy">--</span>%</h3>
+    <h3>📋 Last 10 Results:</h3>
+    <p id="last10">--</p>
+    <h3>📊 Total:</h3>
+    <p>✅ Win: <span id="winCount">0</span> |
+       ❌ Loss: <span id="lossCount">0</span> |
+       ➖ Tie: <span id="tieCount">0</span></p>
+  </div>
+
+  <script>
+    let allResults = [];
+    let results = [];
+    let lastPrediction = null;
+    let win = 0, loss = 0, tie = 0;
+    let confidenceHistory = [];
+
+    function addResult(value) {
+      allResults.push(value);
+      results.push(value);
+      if (results.length > 10) results.shift();
+      document.getElementById("last10").innerText = results.join(', ');
+
+      if (allResults.length < 3) {
+        updateDisplay('--', '--', '--');
+        document.getElementById('winloss').innerText = '--';
+        return;
+      }
+
+      const pred = predictNext(allResults);
+      confidenceHistory.push(pred.confidence);
+      updateDisplay(pred.prediction, pred.confidence, getAdvice(pred.confidence));
+
+      if (lastPrediction) {
+        if (value === 'Tie') {
+          tie++;
+          document.getElementById('winloss').innerText = '➖ Tie';
+        } else if (lastPrediction === value) {
+          win++;
+          document.getElementById('winloss').innerText = '✅ Win';
+        } else {
+          loss++;
+          document.getElementById('winloss').innerText = '❌ Loss';
+        }
+        updateStats();
+      } else {
+        document.getElementById('winloss').innerText = '--';
+      }
+
+      lastPrediction = pred.prediction;
+    }
+
+    function predictNext(history) {
+      const len = history.length;
+      const last4 = history.slice(-4).join(',');
+      const last10 = history.slice(-10).join(',');
+
+      if (last4 === 'D,D,T,T') return { prediction: 'D', confidence: 86 };
+      if (last4 === 'T,T,D,D') return { prediction: 'T', confidence: 86 };
+      if (last10.includes('D,D,D,D,T,T,T,T')) return { prediction: 'D', confidence: 88 };
+      if (last10.includes('T,T,T,T,D,D,D,D')) return { prediction: 'T', confidence: 88 };
+
+      let patternRepeat = findPatternRepeat(history);
+      if (patternRepeat) return patternRepeat;
+
+      const last = history[len - 1];
+      const secondLast = history[len - 2];
+
+      let streak = 1;
+      for (let i = len - 1; i > 0; i--) {
+        if (history[i] === history[i - 1]) streak++;
+        else break;
+      }
+      if (streak >= 3 && last === 'D') return { prediction: 'D', confidence: 89 };
+      if (streak >= 3 && last === 'T') return { prediction: 'T', confidence: 89 };
+
+      if (last === 'D' && secondLast === 'D') return { prediction: 'D', confidence: 82 };
+      if (last === 'T' && secondLast === 'T') return { prediction: 'T', confidence: 81 };
+      if (last === 'D' && secondLast === 'T') return { prediction: 'T', confidence: 74 };
+      if (last === 'T' && secondLast === 'D') return { prediction: 'D', confidence: 73 };
+
+      return { prediction: 'Skip (No clear pattern)', confidence: 60 };
+    }
+
+    function findPatternRepeat(history) {
+      const len = history.length;
+      for (let size = 3; size <= 5; size++) {
+        const recent = history.slice(-size).join(',');
+        for (let i = 0; i < len - size * 2; i++) {
+          const past = history.slice(i, i + size).join(',');
+          if (recent === past) {
+            const next = history[i + size];
+            if (next) return { prediction: next, confidence: 90 };
+          }
+        }
+      }
+      return null;
+    }
+
+    function getAdvice(conf) {
+      if (conf >= 85) return '<span class="highlight">✅ Lagao (High Confidence)</span>';
+      if (conf >= 75) return '⚠️ Risk Manage karo';
+      return '❌ Skip karo';
+    }
+
+    function updateStats() {
+      const total = win + loss;
+      const accuracy = total > 0 ? Math.round((win / total) * 100) : 0;
+      document.getElementById('winCount').innerText = win;
+      document.getElementById('lossCount').innerText = loss;
+      document.getElementById('tieCount').innerText = tie;
+      document.getElementById('accuracy').innerText = accuracy;
+    }
+
+    function updateDisplay(prediction, confidence, advice) {
+      document.getElementById('prediction').innerText = prediction;
+      document.getElementById('confidence').innerText = confidence + '%';
+      document.getElementById('advice').innerHTML = advice;
+    }
+
+    function exportCSV() {
+      let csv = 'Index,Result\n';
+      allResults.forEach((res, i) => {
+        csv += `${i + 1},${res}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'DT_Analyzer_Results.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
