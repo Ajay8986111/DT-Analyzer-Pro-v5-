@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DT Analyzer Pro v5</title>
+  <title>DT Analyzer Pro v7</title>
   <style>
     body {
       background: #111;
@@ -33,7 +33,7 @@
   </style>
 </head>
 <body>
-  <h1>🐉🐯 DT Analyzer Pro v5</h1>
+  <h1>🐉🐯 DT Analyzer Pro v7</h1>
   <p>Tap your result:</p>
   <button onclick="addResult('D')">Dragon (D)</button>
   <button onclick="addResult('T')">Tiger (T)</button>
@@ -60,7 +60,6 @@
     let results = [];
     let lastPrediction = null;
     let win = 0, loss = 0, tie = 0;
-    let confidenceHistory = [];
 
     function addResult(value) {
       allResults.push(value);
@@ -75,7 +74,6 @@
       }
 
       const pred = predictNext(allResults);
-      confidenceHistory.push(pred.confidence);
       updateDisplay(pred.prediction, pred.confidence, getAdvice(pred.confidence));
 
       if (lastPrediction) {
@@ -99,45 +97,50 @@
 
     function predictNext(history) {
       const len = history.length;
+      const last = history[len - 1];
+      const secondLast = history[len - 2];
       const last4 = history.slice(-4).join(',');
       const last10 = history.slice(-10).join(',');
 
-      if (last4 === 'D,D,T,T') return { prediction: 'D', confidence: 86 };
-      if (last4 === 'T,T,D,D') return { prediction: 'T', confidence: 86 };
-      if (last10.includes('D,D,D,D,T,T,T,T')) return { prediction: 'D', confidence: 88 };
-      if (last10.includes('T,T,T,T,D,D,D,D')) return { prediction: 'T', confidence: 88 };
+      // 1. Specific pattern recognition
+      if (last4 === 'D,D,T,T') return { prediction: 'D', confidence: 87 };
+      if (last4 === 'T,T,D,D') return { prediction: 'T', confidence: 87 };
+      if (last10.includes('D,D,D,D,T,T,T,T')) return { prediction: 'D', confidence: 89 };
+      if (last10.includes('T,T,T,T,D,D,D,D')) return { prediction: 'T', confidence: 89 };
 
-      let patternRepeat = findPatternRepeat(history);
-      if (patternRepeat) return patternRepeat;
+      // 2. Pattern repetition detector
+      const repeatedPattern = findPatternRepeat(history);
+      if (repeatedPattern) return repeatedPattern;
 
-      const last = history[len - 1];
-      const secondLast = history[len - 2];
-
+      // 3. Streak logic
       let streak = 1;
       for (let i = len - 1; i > 0; i--) {
         if (history[i] === history[i - 1]) streak++;
         else break;
       }
-      if (streak >= 3 && last === 'D') return { prediction: 'D', confidence: 89 };
-      if (streak >= 3 && last === 'T') return { prediction: 'T', confidence: 89 };
 
-      if (last === 'D' && secondLast === 'D') return { prediction: 'D', confidence: 82 };
-      if (last === 'T' && secondLast === 'T') return { prediction: 'T', confidence: 81 };
+      if (streak >= 4 && last === 'D') return { prediction: 'D', confidence: 90 };
+      if (streak >= 4 && last === 'T') return { prediction: 'T', confidence: 90 };
+
+      // 4. Short-term logic
+      if (last === 'D' && secondLast === 'D') return { prediction: 'D', confidence: 84 };
+      if (last === 'T' && secondLast === 'T') return { prediction: 'T', confidence: 83 };
       if (last === 'D' && secondLast === 'T') return { prediction: 'T', confidence: 74 };
       if (last === 'T' && secondLast === 'D') return { prediction: 'D', confidence: 73 };
 
+      // 5. Default fallback
       return { prediction: 'Skip (No clear pattern)', confidence: 60 };
     }
 
     function findPatternRepeat(history) {
       const len = history.length;
-      for (let size = 3; size <= 5; size++) {
+      for (let size = 3; size <= 6; size++) {
         const recent = history.slice(-size).join(',');
         for (let i = 0; i < len - size * 2; i++) {
           const past = history.slice(i, i + size).join(',');
           if (recent === past) {
             const next = history[i + size];
-            if (next) return { prediction: next, confidence: 90 };
+            if (next) return { prediction: next, confidence: 91 };
           }
         }
       }
@@ -174,7 +177,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'DT_Analyzer_Results.csv';
+      a.download = 'DT_Analyzer_v7_Results.csv';
       a.click();
       URL.revokeObjectURL(url);
     }
